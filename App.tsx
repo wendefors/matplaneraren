@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Recipe, WeekPlan } from './types';
-import { getRecipes, saveRecipes, getPlans, savePlans, isAuthorized } from './services/storageService';
-import MealPlanner from './components/MealPlanner';
-import RecipeList from './components/RecipeList';
-import Login from './components/Login';
+import { Recipe, WeekPlan } from './types.ts';
+import { getRecipes, saveRecipes, getPlans, savePlans, isAuthorized } from './services/storageService.ts';
+import MealPlanner from './components/MealPlanner.tsx';
+import RecipeList from './components/RecipeList.tsx';
+import Login from './components/Login.tsx';
 
 const NavLink: React.FC<{ to: string, children: React.ReactNode }> = ({ to, children }) => {
   const location = useLocation();
