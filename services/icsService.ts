@@ -3,32 +3,33 @@ import { Recipe, DayPlan } from '../types';
 
 /**
  * Calculates the correct date for a specific day of an ISO week.
- * ISO 8601 rule: Week 1 is the week with the first Thursday of the year.
+ * Uses UTC to avoid timezone shifts during calculation.
  */
 function getDateOfWeekDay(weekStr: string, dayIndex: number): Date {
   const [year, weekNum] = weekStr.split('-W').map(Number);
   
-  // Start with Jan 4th (always in Week 1)
-  const date = new Date(year, 0, 4);
+  // ISO 8601 week 1 is the week with the first Thursday of the year (Jan 4 is always in it)
+  const jan4 = new Date(Date.UTC(year, 0, 4));
   
   // Find the Monday of that week
-  const day = date.getDay() || 7; // Sunday as 7
-  date.setDate(date.getDate() - day + 1);
+  const day = jan4.getUTCDay() || 7; // Sunday=7, Monday=1
+  const mondayOfFirstWeek = new Date(jan4);
+  mondayOfFirstWeek.setUTCDate(jan4.getUTCDate() - day + 1);
   
-  // Move to the requested week and day
-  // dayIndex 0 = Monday, 1 = Tuesday etc.
-  date.setDate(date.getDate() + (weekNum - 1) * 7 + dayIndex);
+  // Add weeks and days
+  const targetDate = new Date(mondayOfFirstWeek);
+  targetDate.setUTCDate(mondayOfFirstWeek.getUTCDate() + (weekNum - 1) * 7 + dayIndex);
   
-  return date;
+  return targetDate;
 }
 
 function formatTimeForICS(date: Date, hours: number, minutes: number): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   const h = String(hours).padStart(2, '0');
   const min = String(minutes).padStart(2, '0');
-  // Use local time format without 'Z' to respect device timezone
+  // Return local format (no Z) so the phone handles the timezone conversion
   return `${y}${m}${d}T${h}${min}00`;
 }
 
@@ -44,7 +45,7 @@ export const generateICS = (weekIdentifier: string, plans: DayPlan[], recipes: R
     const startStr = formatTimeForICS(baseDate, 17, 30);
     const endStr = formatTimeForICS(baseDate, 18, 30);
     const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const uid = `plan-${weekIdentifier}-${plan.dayId}-${plan.recipeId}@matplaneraren`;
+    const uid = `plan-${weekIdentifier}-${plan.dayId}-${plan.recipeId}-${Date.now()}@matplaneraren`;
 
     const event = [
       'BEGIN:VEVENT',
@@ -55,9 +56,9 @@ export const generateICS = (weekIdentifier: string, plans: DayPlan[], recipes: R
       `SUMMARY:Middag: ${recipe.name}`,
       `DESCRIPTION:Kategori: ${recipe.category}\\nKälla: ${recipe.source || 'Okänd'}`,
       'BEGIN:VALARM',
-      'TRIGGER:-PT15M',
       'ACTION:DISPLAY',
-      'DESCRIPTION:Reminder',
+      'DESCRIPTION:Dags att laga mat!',
+      'TRIGGER:-PT15M',
       'END:VALARM',
       'END:VEVENT'
     ].join('\r\n');
@@ -68,7 +69,7 @@ export const generateICS = (weekIdentifier: string, plans: DayPlan[], recipes: R
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Matplaneraren//NONSGML v1.3//EN',
+    'PRODID:-//Matplaneraren//NONSGML v1.4//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     ...events,
